@@ -2,11 +2,12 @@
 '''
 Author: ou yang xu jian
 Date: 2020-11-23 21:44:44
-LastEditTime: 2020-11-27 12:32:10
+LastEditTime: 2020-12-04 22:53:00
 LastEditors: Please set LastEditors
 Description: In User Settings Edit
 FilePath: \se2020\communication\robot_server.py
 '''
+from threading import Lock
 from concurrent import futures
 import time
 
@@ -22,13 +23,14 @@ Port = 8888
 
 class RobotServicer(msg_pb2_grpc.MsgServicesServicer):
 
-    def __init__(self, reciveMap, reciveCommand, reciveVoice):
+    def __init__(self, receiveMap, receiveCommand, receiveVoice, receiveDriveCommand):
         '''
         The following are callback function for handling the message
         '''
-        self.reciveMap = reciveMap
-        self.reciveCommand = reciveCommand
-        self.reciveVoice = reciveVoice
+        self.receiveMap = receiveMap
+        self.receiveCommand = receiveCommand
+        self.receiveVoice = receiveVoice
+        self.receiveDriveCommand = receiveDriveCommand
         return
 
     def ConfigMap(self, request, context):
@@ -52,8 +54,9 @@ class RobotServicer(msg_pb2_grpc.MsgServicesServicer):
                 block.type, block.w, block.h, block.pos.posx, block.pos.posy))
 
         # if the reqeust message goes wrong, please modify the status to 1
-        if self.reciveMap is not None:
-            return msg_pb2.Response(status=self.reciveMap(request, context)) # The Callback function
+        if self.receiveMap is not None:
+            # The Callback function
+            return msg_pb2.Response(status=self.receiveMap(request, context))
         else:
             return msg_pb2.Response(status=0)
 
@@ -69,17 +72,10 @@ class RobotServicer(msg_pb2_grpc.MsgServicesServicer):
         TODO: post the custom message of getting Control Command
         '''
         # The following code prints the received message
-        cmd = request.cmd
-        if cmd == 0:
-            print("Start the Experiment")
-        elif cmd == 1:
-            print("Stop the Experiment")
-        elif cmd == 2:
-            print("build connect")
-
         # if the reqeust message goes wrong, please modify the status to 1
-        if self.reciveCommand is not None:
-            return msg_pb2.Response(status=self.reciveCommand(request, context)) # The Callback function
+        if self.receiveCommand is not None:
+            # The Callback function
+            return msg_pb2.Response(status=self.receiveCommand(request, context))
         else:
             return msg_pb2.Response(status=0)
 
@@ -107,10 +103,21 @@ class RobotServicer(msg_pb2_grpc.MsgServicesServicer):
         for bytestr in request_iterator:
             print(bytestr.file)
         # if the reqeust message goes wrong, please modify the status to 1
-        if self.reciveVoice is not None:
-            return msg_pb2.Response(status=self.reciveVoice(request_iterator, context)) # The Callback function
+        if self.receiveVoice is not None:
+            # The Callback function
+            return msg_pb2.Response(status=self.receiveVoice(request_iterator, context))
         else:
             return msg_pb2.Response(status=0)
+
+    def DriveRobot(self, response, context):
+        '''
+        description: this function is the response function when the control server site sends drive robot message
+        param {*} self
+        param {Drive} response
+        param {*} context
+        return {Response}
+        '''
+        return msg_pb2.Response(status=self.receiveDriveCommand(response, context))
 
     """
     def RobotPath(self, request, context):
@@ -132,7 +139,13 @@ class RobotServicer(msg_pb2_grpc.MsgServicesServicer):
     """
 
 
+_ROBOT_SERVER_RUNNING = True
+lock = Lock()
+
+
 def serve(servicer):
+    global _ROBOT_SERVER_RUNNING
+    _ROBOT_SERVER_RUNNING = True
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     msg_pb2_grpc.add_MsgServicesServicer_to_server(
         servicer, server
@@ -140,11 +153,25 @@ def serve(servicer):
     server.add_insecure_port('[::]:{}'.format(Port))
     server.start()
     try:
-        while True:
-            time.sleep(_ONE_DAY_IN_SECONDS)
+        while _ROBOT_SERVER_RUNNING:
+            # time.sleep(_ONE_DAY_IN_SECONDS)
+            pass
     except KeyboardInterrupt:
         server.stop(0)
 
 
+def stop():
+    global _ROBOT_SERVER_RUNNING
+    with lock:
+        _ROBOT_SERVER_RUNNING = False
+
+
 if __name__ == '__main__':
-    serve(RobotServicer())
+    import _thread
+    robotserver = RobotServicer()
+    _thread.start_new_thread(serve, (robotserver,))
+    # serve(robotserver)
+    print("start server")
+    time.sleep(5)
+    stop()
+    time.sleep(1)

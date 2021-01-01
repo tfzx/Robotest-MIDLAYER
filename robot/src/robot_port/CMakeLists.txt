@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  geometry_msgs
   message_generation
 )
 
@@ -57,6 +58,13 @@ add_message_files(
   path.msg
   map_object.msg
   vmap.msg
+  enum_type.msg
+  response.msg
+  stop.msg
+  Frame.msg
+  Person.msg
+  BodyPart.msg
+  Pixel.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -77,6 +85,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  geometry_msgs
 )
 
 ################################################

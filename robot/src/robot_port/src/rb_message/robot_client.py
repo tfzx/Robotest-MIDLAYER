@@ -16,15 +16,15 @@ import msg_pb2_grpc
 
 receiverAddr = {
     "AR": {
-        "IP": "localhost",
-        "Port": 8888
+        "IP": "172.20.10.4",
+        "Port": 8960
     },
     "Ctrl": {
-        "IP": "localhost",
-        "Port": 8888
+        "IP": "172.20.10.3",
+        "Port": 8889
     },
     "Robot": {
-        "IP": "localhost",
+        "IP": "172.20.10.2",
         "Port": 8888
     }
 }
@@ -51,7 +51,6 @@ def sendRBPosition(receiver, point, angle, velocity, timestamp):
     return {int} feedback response status
     '''
     address = getAddr(receiver)
-    print("send robot position to " + receiver + ": " + address)
     channel = grpc.insecure_channel(address)
     stub = msg_pb2_grpc.MsgServicesStub(channel)
     PointPos = msg_pb2.Point(posx=point[0], posy=point[1])
@@ -63,7 +62,6 @@ def sendRBPosition(receiver, point, angle, velocity, timestamp):
         timestamp=timestamp
     )
     response = stub.RobotPosition(RBPos)
-    print("Send Robot Position Feedback" + "{}".format(response.status))
     return response.status
 
 
@@ -101,7 +99,7 @@ def sendVoiceResult(receiver, voiceresult, timestamp):
     return {int} feedback response status
     '''
     address = getAddr(receiver)
-    print("send robot path to " + receiver + ": " + address)
+    print("send voice cmd to " + receiver + ": " + address)
     channel = grpc.insecure_channel(address)
     stub = msg_pb2_grpc.MsgServicesStub(channel)
     resultmsg = msg_pb2.VoiceStr(voice=voiceresult, timestamp=timestamp)
@@ -110,19 +108,33 @@ def sendVoiceResult(receiver, voiceresult, timestamp):
     return response.status
 
 
-def sendRobotFinishedMsg(receiver):
+def sendResponseMsg(receiver, status):
     '''
     description: this function send the robot finished message to the receiver.
     param {str} receiver: the message's receiver
     return {int} feedback response status
     '''
     address = getAddr(receiver)
-    print("send robot path to " + receiver + ": " + address)
+    print("send response to " + receiver + ": " + address)
     channel = grpc.insecure_channel(address)
     stub = msg_pb2_grpc.MsgServicesStub(channel)
-    resultmsg = msg_pb2.Response(status=2)
+    resultmsg = msg_pb2.Response(status = status)
     response = stub.RobotFinished(resultmsg)
     print("Send Robot Finished Feedback" + "{}".format(response.status))
+    return response.status
+
+def sendLogMsg(receiver, logstr):
+    '''
+    description: this function send log message to the receiver.
+    param{str}: receiver
+    param{str}: logstr: the message
+    return {int} feedback response status
+    '''
+    address = getAddr(receiver)
+    channel = grpc.insecure_channel(address)
+    stub = msg_pb2_grpc.MsgServicesStub(channel)
+    resultmsg = msg_pb2.LogStr(log = logstr)
+    response = stub.Log(resultmsg)
     return response.status
 
 
